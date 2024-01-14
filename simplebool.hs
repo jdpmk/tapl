@@ -63,20 +63,20 @@ termShift :: Int -> Term -> Term
 termShift d t = walk 0 t
   where
     walk c t = case t of
-        TmTrue         -> TmTrue
-        TmFalse        -> TmTrue
-        TmIf t1 t2 t3  -> TmIf t1 t2 t3
-        TmVar x        -> TmVar (if x >= c then (x + d) else x)
-        TmAbs x ty t1  -> TmAbs x ty (walk (c + 1) t1)
-        TmApp t1 t2    -> TmApp (walk c t1) (walk c t2)
+        TmTrue        -> TmTrue
+        TmFalse       -> TmTrue
+        TmIf t1 t2 t3 -> TmIf t1 t2 t3
+        TmVar x       -> TmVar (if x >= c then (x + d) else x)
+        TmAbs x ty t1 -> TmAbs x ty (walk (c + 1) t1)
+        TmApp t1 t2   -> TmApp (walk c t1) (walk c t2)
 
 termSubst :: Int -> Term -> Term -> Term
 termSubst j s t = walk 0 t
   where
     walk c t = case t of
-        TmVar x        -> if x == j + c then termShift c s else TmVar x
-        TmAbs x ty t1  -> TmAbs x ty (walk (c + 1) t1)
-        TmApp t1 t2    -> TmApp (walk c t1) (walk c t2)
+        TmVar x       -> if x == j + c then termShift c s else TmVar x
+        TmAbs x ty t1 -> TmAbs x ty (walk (c + 1) t1)
+        TmApp t1 t2   -> TmApp (walk c t1) (walk c t2)
 
 termSubstTop :: Term -> Term -> Term
 termSubstTop s t = termShift (-1) (termSubst 0 (termShift 1 s) t)
@@ -137,7 +137,6 @@ typeOf ctx t = case t of
                         "    " ++ show ty2 ++ "\n" ++
                         "  to parameter of type:\n" ++
                         "    " ++ show ty11
-
             _ -> Left $
                     "cannot apply to term of type:\n" ++
                     "  " ++ show ty1 ++ "\n" ++
@@ -262,10 +261,11 @@ main = do
     let bad_branches = TmIf TmTrue id TmFalse
     typeCheckAndEval bad_branches
 
-    -- if ((\x : Bool. x) true) then false else true
-    -- if ((\x : Bool. x) true) then false else true : Bool
-    -- if ((\x : Bool. x) true) then false else true
-    -- => if true then false else true
-    -- => false
-    let complex_if = TmIf (TmApp id TmTrue) TmFalse TmTrue
+    -- if ((\x : Bool. x) true) then ((\x : Bool. x) false) else true
+    -- if ((\x : Bool. x) true) then ((\x : Bool. x) false) else true : Bool
+    -- if ((\x : Bool. x) true) then ((\x : Bool. x) false) else true
+    -- => if true then ((\x : Bool. x) false) else true
+    -- => ((\x : Bool. x) false)
+    -- => true
+    let complex_if = TmIf (TmApp id TmTrue) (TmApp id TmFalse) TmTrue
     typeCheckAndEval complex_if
